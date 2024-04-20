@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Event Stream Test</title>
+  </head>
+  <body>
+    <h1>Server Sent Events Test</h1>
+    <div id="events"></div>
+    <script>
+      const appendMessage = (data) => {
+        const newElement = document.createElement("p");
+        newElement.textContent = "Message: " + data;
+        document.getElementById("events").appendChild(newElement);
+      };
+      const eventSource = new EventSource("/events");
+
+      eventSource.addEventListener("open", (event) => {
+        console.log(event);
+        appendMessage(`connected`);
+      });
+      eventSource.addEventListener("message", (event) => {
+        console.log(event);
+        appendMessage(event.data);
+      });
+      eventSource.addEventListener('error', (event) => {
+        console.log(event);
+        eventSource.close();
+      });
+    </script>
+  </body>
+</html>
