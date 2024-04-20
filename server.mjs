@@ -1,17 +1,15 @@
 import http2 from "node:http2";
 import fs from "node:fs";
-
-async function* generateEvents() {
-  while (true) {
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // simulate delay
-    yield { time: new Date().toISOString() };
-  }
-}
+import { client } from "./mongo.mjs";
 
 const server = http2.createSecureServer({
   key: fs.readFileSync(".secrets/localhost-privkey.pem"),
   cert: fs.readFileSync(".secrets/localhost-cert.pem"),
 });
+
+// NOTE: these have to be created in advance
+const db = client.db("hello-events");
+const changeStream = db.watch([], { fullDocument: "updateLookup" });
 
 server.on("stream", async (stream, headers) => {
   if (headers[":path"] === "/") {
@@ -24,17 +22,17 @@ server.on("stream", async (stream, headers) => {
       },
       {
         onError: (err) => stream.end("Error loading index.html"),
-      }
+      },
     );
   } else if (headers[":path"] === "/events") {
-    console.log('setting up events')
+    console.log("setting up events");
     stream.respond({
       "content-type": "text/event-stream",
       "cache-control": "no-cache",
     });
 
     try {
-      for await (const event of generateEvents()) {
+      for await (const event of changeStream) {
         console.log(event);
         if (stream.writableEnded) break; // Check if the stream has ended
         stream.write(`data: ${JSON.stringify(event)}\n\n`);
